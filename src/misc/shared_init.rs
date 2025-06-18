@@ -111,8 +111,8 @@ impl EVMChain {
             .iter()
             .any(|chain| chain.chain_id() == chain_id)
         {
-            eyre::bail!(
-                "Invalid chain id {}. {}",
+            println!(
+                "Unknown chain id {}. {}. Assuming Optimism",
                 chain_id,
                 EVMChainType::supported_chains_text()
             )
@@ -121,7 +121,7 @@ impl EVMChain {
         let matching_chain = supported_chains
             .iter()
             .find(|chain| chain.chain_id() == chain_id)
-            .unwrap();
+            .unwrap_or(&EVMChainType::Optimism);
 
         Ok(Self {
             rpc_url,
