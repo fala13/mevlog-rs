@@ -299,16 +299,23 @@ impl TxsFilter {
 
         if let Some(method) = &self.match_method {
             if let Some(calls) = &mev_tx.calls {
+                let mut should_exclude = true;
+                let ingore_string = "swap";
+                let ignore_method = SignatureQuery::Regex(Regex::new(ingore_string).unwrap());
                 for call in calls {
+                    if ignore_method.matches(&call.signature) {
+                        return true;
+                    }
                     if method.matches(&call.signature) {
-                        return false;
+                        should_exclude = false;
                     }
                     if let Some(signature_hash) = &call.signature_hash {
                         if method.matches(signature_hash) {
-                            return false;
+                            should_exclude = false;
                         }
                     }
                 }
+                return should_exclude;
             }
             return true;
         }
