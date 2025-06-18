@@ -32,6 +32,7 @@ pub enum EVMChainType {
     Linea,
     Scroll,
     Fantom,
+    Unknown(u64),
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +55,7 @@ impl EVMChainType {
             EVMChainType::Linea => 59144,
             EVMChainType::Scroll => 534352,
             EVMChainType::Fantom => 250,
+            EVMChainType::Unknown(chain_id) => *chain_id,
         }
     }
 
@@ -70,6 +72,7 @@ impl EVMChainType {
             EVMChainType::Linea => "linea",
             EVMChainType::Scroll => "scroll",
             EVMChainType::Fantom => "fantom",
+            EVMChainType::Unknown(_) => "unknown",
         }
     }
 
@@ -107,25 +110,23 @@ Visit https://github.com/pawurb/mevlog-rs/issues/9 to add more."#
 impl EVMChain {
     pub fn new(chain_id: u64, rpc_url: String) -> Result<Self> {
         let supported_chains = EVMChainType::supported();
-        if !supported_chains
-            .iter()
-            .any(|chain| chain.chain_id() == chain_id)
-        {
-            println!(
-                "Unknown chain id {}. {}. Assuming Optimism",
-                chain_id,
-                EVMChainType::supported_chains_text()
-            )
-        }
-
-        let matching_chain = supported_chains
+        let matching_chain = if let Some(chain) = supported_chains
             .iter()
             .find(|chain| chain.chain_id() == chain_id)
-            .unwrap_or(&EVMChainType::Optimism);
+        {
+            chain.clone()
+        } else {
+            println!(
+                "Unknown chain id {}. {}",
+                chain_id,
+                EVMChainType::supported_chains_text()
+            );
+            EVMChainType::Unknown(chain_id)
+        };
 
         Ok(Self {
             rpc_url,
-            chain_type: matching_chain.clone(),
+            chain_type: matching_chain,
         })
     }
 
@@ -141,13 +142,13 @@ impl EVMChain {
         self.name()
     }
 
-    pub fn cryo_cache_dir_name(&self) -> &str {
+    pub fn cryo_cache_dir_name(&self) -> String {
         match self.chain_type {
-            EVMChainType::Mainnet => "ethereum",
-            EVMChainType::BSC => "bnb",
-            EVMChainType::Scroll => "network_534352",
-            EVMChainType::Fantom => "network_250",
-            _ => self.name(),
+            EVMChainType::Mainnet => "ethereum".to_string(),
+            EVMChainType::BSC => "bnb".to_string(),
+            EVMChainType::Scroll => "network_534352".to_string(),
+            EVMChainType::Fantom => "network_250".to_string(),
+            _ => self.chain_id().to_string(),
         }
     }
 
@@ -166,6 +167,7 @@ impl EVMChain {
             EVMChainType::Linea => address!("0x3c6Cd9Cc7c7a4c2Cf5a82734CD249D7D593354dA"),
             EVMChainType::Scroll => address!("0x6bF14CB0A831078629D993FDeBcB182b21A8774C"),
             EVMChainType::Fantom => address!("0x11DdD3d147E5b83D01cee7070027092397d63658"),
+            EVMChainType::Unknown(_) => address!("0x0000000000000000000000000000000000000000"),
         }
     }
 
@@ -182,6 +184,7 @@ impl EVMChain {
             EVMChainType::Linea => "https://lineascan.build",
             EVMChainType::Scroll => "https://scrollscan.com",
             EVMChainType::Fantom => "https://explorer.fantom.network",
+            EVMChainType::Unknown(_) => "https://etherscan.io",
         }
     }
 
