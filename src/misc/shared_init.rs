@@ -148,6 +148,7 @@ impl EVMChain {
             EVMChainType::BSC => "bnb".to_string(),
             EVMChainType::Scroll => "network_534352".to_string(),
             EVMChainType::Fantom => "network_250".to_string(),
+            EVMChainType::Unknown(chain_id) => format!("network_{}", chain_id),
             _ => self.chain_id().to_string(),
         }
     }

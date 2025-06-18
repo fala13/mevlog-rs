@@ -124,7 +124,11 @@ impl MEVBlock {
 
         let block_number_int = block_number_tag.as_number().unwrap();
 
-        let _cmd = Command::new("cryo")
+        if which::which("cryo").is_err() {
+            eyre::bail!("'cryo' command not found in PATH. Please install it by running 'cargo install cryo_cli' or visit https://github.com/paradigmxyz/cryo");
+        };
+
+        let cryo_output = Command::new("cryo")
             .args([
                 "txs",
                 "-b",
@@ -137,7 +141,19 @@ impl MEVBlock {
                 "--output-dir",
                 cryo_cache_dir().display().to_string().as_str(),
             ])
-            .output();
+            .output()?;
+
+        if !cryo_output.status.success() {
+            let stderr = String::from_utf8_lossy(&cryo_output.stderr);
+            let stdout = String::from_utf8_lossy(&cryo_output.stdout);
+            eyre::bail!(
+                "cryo command failed with exit code {:?}. Chain ID: {}. Stdout: {}. Stderr: {}. This might happen because cryo doesn't support this chain or there's an RPC connection issue.",
+                cryo_output.status.code(),
+                chain.chain_id(),
+                stdout,
+                stderr
+            );
+        }
 
         let file_path = format!(
             "{}/{}__transactions__{block_number_int}_to_{block_number_int}.csv",
@@ -145,15 +161,11 @@ impl MEVBlock {
             chain.cryo_cache_dir_name()
         );
 
-        if which::which("cryo").is_err() {
-            eyre::bail!("'cryo' command not found in PATH. Please install it by running 'cargo install cryo_cli' or visit https://github.com/paradigmxyz/cryo");
-        };
-
         let file = match std::fs::File::open(file_path.clone()) {
             Ok(file) => file,
             Err(e) => {
                 if e.kind() == std::io::ErrorKind::NotFound {
-                    eyre::bail!("CSV file {file_path} not found. Make sure that 'cryo' command is working and that you have a valid RPC connection.");
+                    eyre::bail!("CSV file {file_path} not found even though cryo command succeeded. This might indicate an issue with cryo's output naming or directory structure.");
                 } else {
                     eyre::bail!("Error opening CSV file: {e}");
                 }
